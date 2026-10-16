@@ -52,6 +52,7 @@ class Plugin(unittest.TestCase):
             ("/w/icons/a.png", "Фрутигер, синяя"), ("/w/icons/b 2.jpg", "b 2"),
             ("/w/icons/c.png", "Фрутигер, синяя (2)"), ("/w/x.webp", "x"), ("/w/y.png", "y"),
             ("/w/opt/1.png", "Первая")])
+        self.assertTrue(ev["data"]["pick"])   # картинки списком в вопросе — кнопка на каждую
 
     def test_first_start_skips_old_questions_and_restart_does_not_repeat(self):
         self.ask("old", "- a `/w/a.png`")

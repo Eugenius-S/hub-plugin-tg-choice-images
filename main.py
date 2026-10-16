@@ -55,18 +55,19 @@ def from_options(options):
 
 
 def albums(data):
-    """[(номер вопроса, картинки)] для permission.requested AskUserQuestion."""
+    """[(номер вопроса, картинки, pick)] для permission.requested AskUserQuestion; pick — картинки списком в тексте
+    вопроса (как у choice-images): бот даёт кнопку на каждую, ответ — подписи отмеченных."""
     if data.get("tool") != "AskUserQuestion":
         return []
     out = []
     for qi, q in enumerate((data.get("input") or {}).get("questions") or []):
-        items, seen = [], set()
-        for it in from_question(q.get("question")) + from_options(q.get("options")):
+        items, seen, listed = [], set(), from_question(q.get("question"))
+        for it in listed + from_options(q.get("options")):
             if it["path"] not in seen:
                 seen.add(it["path"])
                 items.append(it)
         if items:
-            out.append((qi, items))
+            out.append((qi, items, bool(listed)))
     return out
 
 
@@ -111,8 +112,9 @@ class Plugin:
             rid = data.get("request_id")
             if ev.get("type") != "permission.requested" or not rid or rid in self.st["done"]:
                 continue
-            for qi, items in albums(data):
-                spool.put(self.spool, "telegram.album", ev.get("entity"), {"request_id": rid, "q": qi, "items": items},
+            for qi, items, pick in albums(data):
+                spool.put(self.spool, "telegram.album", ev.get("entity"),
+                          {"request_id": rid, "q": qi, "items": items, **({"pick": True} if pick else {})},
                           src=f"ext:{NAME}")
             self.st["done"] = (self.st["done"] + [rid])[-KEEP:]
         if changed:
