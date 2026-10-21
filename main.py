@@ -1,7 +1,7 @@
-"""Процесс плагина «Картинки вопроса в Telegram»: читает журнал хаба; на вопрос сессии (AskUserQuestion) с картинками —
-пути списком в тексте вопроса (как у плагина choice-images) или в описаниях вариантов — шлёт ядру факт
-telegram.album: бот Telegram присылает их альбомом ответом на карточку вопроса, под ними — те же кнопки.
-Ядро не правит: читает журнал, пишет только фактом в ящик (EXTENDING.md)."""
+"""Process of the "Question images in Telegram" plugin: reads the hub journal; for a session question (AskUserQuestion)
+with images - paths listed in the question text (as in the choice-images plugin) or in option descriptions - it sends
+the core a telegram.album fact: the Telegram bot posts them as an album replying to the question card, with the same
+buttons under it. It does not touch the core: it reads the journal and writes only a fact to the spool (EXTENDING.md)."""
 import json
 import os
 import re
@@ -12,9 +12,9 @@ from core import journal, spool
 
 NAME = os.environ.get("HUB_EXTENSION", "tg-choice-images")
 IMAGE = r"\.(?:png|jpe?g|gif|webp)"
-# полный путь (posix или C:\…) к картинке, и с пробелами: до расширения, за которым не идёт буква/точка
+# full path (posix or C:\...) to an image, spaces allowed: up to an extension not followed by a letter or a dot
 PATH = re.compile(r"((?:/|[A-Za-z]:[\\/])[^\n`\"'<>|]*?" + IMAGE + r")(?![\w.])", re.I)
-KEEP = 500   # сколько обработанных вопросов помнить
+KEEP = 500   # how many handled questions to remember
 
 
 def stem(path):
@@ -26,8 +26,8 @@ def paths_in(text):
 
 
 def from_question(text):
-    """Картинки из текста вопроса: строка с одной картинкой — подпись её текстом без пути («- MJ-3:2 `/путь`» →
-    «MJ-3:2»), без текста или несколько картинок в строке — имя файла. Одинаковые подписи — с номером."""
+    """Images from the question text: a line with one image - caption is its text without the path ("- MJ-3:2 `/path`"
+    -> "MJ-3:2"); with no text, or several images in a line - the file name. Equal captions get a number."""
     items = []
     for line in (text or "").split("\n"):
         paths = paths_in(line)
@@ -46,7 +46,7 @@ def from_question(text):
 
 
 def from_options(options):
-    """Картинка в описании варианта — подпись названием варианта (несколько — «вариант — имя файла»)."""
+    """An image in an option description - captioned with the option label (several - "label - file name")."""
     items = []
     for o in options or []:
         label, paths = o.get("label") or "", paths_in(o.get("description"))
@@ -55,8 +55,8 @@ def from_options(options):
 
 
 def albums(data):
-    """[(номер вопроса, картинки, pick)] для permission.requested AskUserQuestion; pick — картинки списком в тексте
-    вопроса (как у choice-images): бот даёт кнопку на каждую, ответ — подписи отмеченных."""
+    """[(question number, images, pick)] for a permission.requested AskUserQuestion; pick - images listed in the question
+    text (as in choice-images): the bot gives a button per image, the answer is the captions of the marked ones."""
     if data.get("tool") != "AskUserQuestion":
         return []
     out = []
@@ -82,11 +82,11 @@ class Plugin:
         except (OSError, ValueError):
             self.st = None
         self.ino, self.offset = journal.identity(self.path), self.size()
-        if self.st is None:   # первый запуск — с конца журнала: старые вопросы не слать
+        if self.st is None:   # first run - start from the journal end: do not send old questions
             last = journal.read_tail(self.path)
             self.st = {"seq": last[-1]["seq"] if last else 0, "done": []}
             self.save()
-        else:   # пока лежал — догнать по хвосту журнала (обработанные не повторять)
+        else:   # was down meanwhile - catch up from the journal tail (do not repeat handled ones)
             self.handle(journal.read_tail(self.path))
 
     def size(self):
@@ -122,7 +122,7 @@ class Plugin:
 
     def poll(self):
         ino = journal.identity(self.path)
-        if ino != self.ino or self.size() < self.offset:   # журнал начат заново — читать новый с начала
+        if ino != self.ino or self.size() < self.offset:   # journal started anew - read the new one from the start
             self.ino, self.offset = ino, 0
         try:
             with open(self.path, "rb") as f:
@@ -146,7 +146,7 @@ class Plugin:
 def main():
     state = os.environ.get("HUB_STATE_DIR")
     if not state:
-        sys.exit("нужен HUB_STATE_DIR (плагин запускает хаб)")
+        sys.exit("HUB_STATE_DIR is required (the hub starts the plugin)")
     p = Plugin(state)
     while True:
         p.poll()

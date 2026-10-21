@@ -1,9 +1,10 @@
 {
   "name": "tg-choice-images",
   "icon": "icon.png",
-  "description": "Вопрос сессии с картинками на выбор — в Telegram альбомом: картинки ответом на карточку вопроса, под ними кнопка на каждую картинку",
-  "why": "Выбрать иконку или вариант картинки с телефона, не открывая страницу хаба",
-  "version": "0.2.0",
+  "description": "A session question with pictures to choose from, sent to Telegram as an album: the pictures as a reply to the question card, with a button for each picture under them",
+  "why": "Pick an icon or a picture variant from your phone without opening the hub page",
+  "version": "0.3.0",
+  "i18n": {"ru": {"description": "Вопрос сессии с картинками на выбор — в Telegram альбомом: картинки ответом на карточку вопроса, под ними кнопка на каждую картинку", "why": "Выбрать иконку или вариант картинки с телефона, не открывая страницу хаба"}},
   "hub": "^1.15",
   "run": ["python3", "main.py"]
 }
