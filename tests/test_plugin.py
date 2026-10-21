@@ -1,5 +1,5 @@
-"""Плагин на событиях журнала: картинки вопроса — фактом telegram.album в ящик, по разу на вопрос, и после
-перезапуска тоже."""
+"""Plugin on journal events: question images go to the spool as a telegram.album fact, once per question, also
+after a restart."""
 import os
 import shutil
 import sys
@@ -16,7 +16,7 @@ import main  # noqa: E402
 class Plugin(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp(prefix="tgci-")
-        os.environ["HUB_STATE_DIR"] = self.dir   # не живой хаб
+        os.environ["HUB_STATE_DIR"] = self.dir   # not the live hub
         self.j = journal.Journal(os.path.join(self.dir, "journal.jsonl"))
         self.j.append("session.requested", "w", {"cwd": "/w", "session_id": "w"})
 
@@ -25,7 +25,7 @@ class Plugin(unittest.TestCase):
 
     def ask(self, rid, question, options=None, multi=True):
         self.j.append("permission.requested", "w", {"request_id": rid, "tool": "AskUserQuestion", "input": {
-            "questions": [{"question": question, "multiSelect": multi, "options": options or [{"label": "Все"}]}]}})
+            "questions": [{"question": question, "multiSelect": multi, "options": options or [{"label": "All"}]}]}})
 
     def taken(self):
         d = os.path.join(self.dir, "spool")
@@ -36,11 +36,11 @@ class Plugin(unittest.TestCase):
 
     def test_pictures_in_question_and_options_become_an_album(self):
         p = main.Plugin(self.dir)
-        self.ask("r1", "Какие иконки берём?\n- Фрутигер, синяя `/w/icons/a.png`\n- `/w/icons/b 2.jpg`\n"
-                       "- Фрутигер, синяя `/w/icons/c.png`\nобе /w/x.webp и /w/y.png", [
-                           {"label": "Первая", "description": "вот она `/w/opt/1.png`"},
-                           {"label": "Без картинки", "description": "текст"}])
-        self.ask("r2", "Без картинок?", [{"label": "Да"}])
+        self.ask("r1", "Which icons do we take?\n- Frutiger, blue `/w/icons/a.png`\n- `/w/icons/b 2.jpg`\n"
+                       "- Frutiger, blue `/w/icons/c.png`\nboth /w/x.webp and /w/y.png", [
+                           {"label": "First", "description": "here it is `/w/opt/1.png`"},
+                           {"label": "No picture", "description": "text"}])
+        self.ask("r2", "No pictures?", [{"label": "Yes"}])
         self.j.append("permission.requested", "w", {"request_id": "r3", "tool": "Bash", "input": {"command": "ls /w/a.png"}})
         p.poll()
         got = self.taken()
@@ -49,24 +49,24 @@ class Plugin(unittest.TestCase):
         self.assertEqual((ev["type"], ev["entity"], ev["src"], ev["data"]["request_id"], ev["data"]["q"]),
                          ("telegram.album", "w", "ext:tg-choice-images", "r1", 0))
         self.assertEqual([(i["path"], i["caption"]) for i in ev["data"]["items"]], [
-            ("/w/icons/a.png", "Фрутигер, синяя"), ("/w/icons/b 2.jpg", "b 2"),
-            ("/w/icons/c.png", "Фрутигер, синяя (2)"), ("/w/x.webp", "x"), ("/w/y.png", "y"),
-            ("/w/opt/1.png", "Первая")])
-        self.assertTrue(ev["data"]["pick"])   # картинки списком в вопросе — кнопка на каждую
+            ("/w/icons/a.png", "Frutiger, blue"), ("/w/icons/b 2.jpg", "b 2"),
+            ("/w/icons/c.png", "Frutiger, blue (2)"), ("/w/x.webp", "x"), ("/w/y.png", "y"),
+            ("/w/opt/1.png", "First")])
+        self.assertTrue(ev["data"]["pick"])   # images listed in the question - a button for each
 
     def test_first_start_skips_old_questions_and_restart_does_not_repeat(self):
         self.ask("old", "- a `/w/a.png`")
         p = main.Plugin(self.dir)
         p.poll()
-        self.assertEqual(self.taken(), [])   # вопрос до первого запуска — не слать
+        self.assertEqual(self.taken(), [])   # a question from before the first run - do not send
         self.ask("r1", "- a `/w/a.png`")
         p.poll()
         self.assertEqual(len(self.taken()), 1)
-        self.ask("r2", "- b `/w/b.png`")   # пришёл, пока плагин лежал
+        self.ask("r2", "- b `/w/b.png`")   # arrived while the plugin was down
         p = main.Plugin(self.dir)
         p.poll()
         self.assertEqual([e["data"]["request_id"] for e in self.taken()], ["r2"])
-        self.ask("r1", "- a `/w/a.png`")   # тот же вопрос ещё раз в журнале (повтор хука) — не повторять
+        self.ask("r1", "- a `/w/a.png`")   # the same question again in the journal (hook repeat) - do not repeat
         p.poll()
         self.assertEqual(self.taken(), [])
 
